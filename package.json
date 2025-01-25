@@ -1,0 +1,48 @@
+{
+  "name": "chatbot-ui",
+  "version": "1.0.0",
+  "description": "A user interface for a chatbot built with React.",
+  "main": "src/index.tsx",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "keywords": [
+    "chatbot",
+    "react",
+    "ui",
+    "typescript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-markdown": "^6.0.3",
+    "react-scripts": "4.0.3",
+    "typescript": "^4.1.2",
+    "vfile": "^5.3.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@types/react": "^17.0.2",
+    "@types/react-dom": "^17.0.2",
+    "babel-eslint": "^10.1.0"
+  },
+  "homepage": "http://yourusername.github.io/chatbot-ui",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
