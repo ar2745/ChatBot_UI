@@ -9,3 +9,4 @@ venv\share
 tsconfig.json
 venv
 .gitattributes
+.gitignore
