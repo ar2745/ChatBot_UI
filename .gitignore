@@ -8,5 +8,4 @@ venv\pyvenv.cfg
 venv\share
 tsconfig.json
 venv
-setup.ps1
 .gitattributes
