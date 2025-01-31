@@ -65,20 +65,28 @@ def chat():
         simple_response = chatbot.get_simple_response(user_input)                                   # Generate a simple response
         return jsonify({'response': simple_response})                                               # Return the simple response in the JSON format
         exit()                                                                                      # Exit the application                                                 
-    else:
+    elif user_input.startswith('@deepseek'):
         try:
-            if user_input.startswith('@DeepSeek'):                                                  # Check if the user input starts with '@DeepSeek'
-                reasoned_response = chatbot.get_reasoned_response(user_input)                       # Generate a reasoned response
-                return jsonify({'response': reasoned_response})                                     # Return the reasoned response in the JSON format
-            elif user_input.startswith('@Llama'):                                                   # Check if the user input starts with '@Llama'
-                simple_response = chatbot.get_simple_response(user_input)                           # Generate a simple response
-                return jsonify({'response': simple_response})                                       # Return the simple response in the JSON format
-            else:
-                simple_response = chatbot.get_simple_response(user_input)                           # Generate a simple response
-                return jsonify({'response': simple_response})                                       # Return the simple response in the JSON format
+            # Get a simple response from the Llama model
+            simple_response = chatbot.get_simple_response(user_input)
+            
+            # Use the simple response to get a reasoned response from the DeepSeek model
+            deepseek_input = f"Our client is requesting about this: {simple_response}"
+            
+            reasoned_response = chatbot.get_reasoned_response(deepseek_input)
+
+            deepseek_output = f"Here is the relevant reasoned response: {reasoned_response}"
+            
+            # Pass the reasoned response back to the Llama model for final processing
+            final_response = chatbot.get_simple_response(deepseek_output)
+            
+            # Return the final response to the user
+            return jsonify({'response': final_response})
         except Exception as e:
-            return jsonify({'response': f'Error: {e}'})                                             # Return an error message
-        
+            return jsonify({'response': f'Error: {e}'})                                             # Return an error message                                          # Return an error message
+    else:
+        simple_response = chatbot.get_simple_response(user_input)                                   # Generate a simple response
+        return jsonify({'response': simple_response})                                               # Return the simple response in the JSON format     
 # Run the Flask app
 if __name__ == "__main__":
     app.run(port=5000)

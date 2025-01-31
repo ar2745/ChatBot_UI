@@ -1,1 +1,12 @@
-\venv\ollama
+venv\node_modules
+venv\public
+venv\ollama
+venv\Scripts
+venv\Include
+venv\Lib
+venv\pyvenv.cfg
+venv\share
+tsconfig.json
+venv
+setup.ps1
+.gitattributes
