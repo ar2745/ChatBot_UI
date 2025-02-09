@@ -27,7 +27,6 @@ mv .\src\ .\venv\
 # mv .\requirements.txt .\venv\
 # mv .\package.json .\venv\
 # mv .\package-lock.json .\venv\
-# mv .\tsconfig.json .\venv\
 # mv .\public\ .\venv\
 # mv .\ollama\ .\venv\
 
