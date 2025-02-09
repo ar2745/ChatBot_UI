@@ -7,17 +7,35 @@ const Chatbot: React.FC = () => {
     const [input, setInput] = useState('');
     const [documents, setDocuments] = useState<string[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+    const [activeSection, setActiveSection] = useState<string>('documents');
+    const [chatHistory, setChatHistory] = useState<{ id: number, title: string, messages: { text: string, sender: string }[] }[]>([]);
+    const [selectedChat, setSelectedChat] = useState<number | null>(null);
 
     useEffect(() => {
         fetch('http://localhost:5000/documents')
             .then(response => response.json())
             .then(data => setDocuments(data.documents))
             .catch(error => console.error('Error fetching documents:', error));
+        
+        // Fetch chat history from local storage
+        fetchChatHistory();
     }, []);
+
+    const fetchChatHistory = () => {
+        const history = localStorage.getItem('chatHistory');
+        if (history) {
+            setChatHistory(JSON.parse(history));
+        }
+    };
+
+    const saveChatHistory = (history: { id: number, title: string, messages: { text: string, sender: string }[] }[]) => {
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+    };
 
     const handleSendMessage = async () => {
         if (input.trim()) {
-            setMessages([...messages, { text: input, sender: 'user' }]);
+            const newMessage = { text: input, sender: 'user' };
+            setMessages([...messages, newMessage]);
             const userMessage = input;
             setInput('');
 
@@ -31,10 +49,30 @@ const Chatbot: React.FC = () => {
                 });
 
                 const data = await response.json();
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    { text: data.response, sender: 'bot' }
-                ]);
+                const botMessage = { text: data.response, sender: 'bot' };
+                setMessages(prevMessages => [...prevMessages, botMessage]);
+
+                // Update chat history
+                if (selectedChat !== null) {
+                    const updatedHistory = chatHistory.map(chat => {
+                        if (chat.id === selectedChat) {
+                            return { ...chat, messages: [...chat.messages, newMessage, botMessage] };
+                        }
+                        return chat;
+                    });
+                    setChatHistory(updatedHistory);
+                    saveChatHistory(updatedHistory);
+                } else {
+                    const newChat = {
+                        id: chatHistory.length + 1,
+                        title: `Chat Session ${chatHistory.length + 1}`,
+                        messages: [newMessage, botMessage]
+                    };
+                    const updatedHistory = [...chatHistory, newChat];
+                    setChatHistory(updatedHistory);
+                    saveChatHistory(updatedHistory);
+                    setSelectedChat(newChat.id);
+                }
             } catch (error) {
                 console.error('Error:', error);
                 setMessages(prevMessages => [
@@ -80,47 +118,138 @@ const Chatbot: React.FC = () => {
         }
     };
 
+    const handleSidebarClick = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (event.target === event.currentTarget) {
+            setSelectedDocument(null);
+        }
+    };
+
+    const handleChatSelect = (chatId: number) => {
+        const selectedChat = chatHistory.find(chat => chat.id === chatId);
+        if (selectedChat) {
+            setSelectedChat(chatId);
+            setMessages(selectedChat.messages);
+        }
+    };
+
+    const handleDeleteChat = (chatId: number) => {
+        const updatedHistory = chatHistory.filter(chat => chat.id !== chatId);
+        setChatHistory(updatedHistory);
+        saveChatHistory(updatedHistory);
+        if (selectedChat === chatId) {
+            setSelectedChat(null);
+            setMessages([]);
+        }
+    };
+
+    const renderSection = () => {
+        switch (activeSection) {
+            case 'chatHistory':
+                return (
+                    <div>
+                        <h3>Chat History</h3>
+                        <ul>
+                            {chatHistory.map(chat => (
+                                <li key={chat.id}>
+                                    <span onClick={() => handleChatSelect(chat.id)}>{chat.title}</span>
+                                    <button onClick={() => handleDeleteChat(chat.id)}>Delete</button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                );
+            case 'documents':
+                return (
+                    <div>
+                        <h3>Uploaded Documents</h3>
+                        <ul>
+                            {documents.map((doc, index) => (
+                                <li
+                                    key={index}
+                                    className={selectedDocument === doc ? 'selected' : ''}
+                                    onClick={() => setSelectedDocument(doc)}
+                                >
+                                    {doc}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                );
+            case 'settings':
+                return (
+                    <div>
+                        <h3>Settings</h3>
+                        <p>User preferences, notification settings, language selection...</p>
+                    </div>
+                );
+            case 'helpSupport':
+                return (
+                    <div>
+                        <h3>Help & Support</h3>
+                        <p>FAQ, contact support, user guide...</p>
+                    </div>
+                );
+            case 'profile':
+                return (
+                    <div>
+                        <h3>Profile</h3>
+                        <p>User profile information, edit profile, logout...</p>
+                    </div>
+                );
+            case 'about':
+                return (
+                    <div>
+                        <h3>About</h3>
+                        <p>Information about the chatbot, version details, credits...</p>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
         <div className="chatbot-container">
-            <div className="document-list">
-                <h3>Uploaded Documents</h3>
-                <ul>
-                    {documents.map((doc, index) => (
-                        <li
-                            key={index}
-                            className={selectedDocument === doc ? 'selected' : ''}
-                            onClick={() => setSelectedDocument(doc)}
-                        >
-                            {doc}
-                        </li>
-                    ))}
+            <div className="sidebar" onClick={handleSidebarClick}>
+                <ul className="menu">
+                    <li onClick={() => setActiveSection('chatHistory')}>Chat History</li>
+                    <li onClick={() => setActiveSection('documents')}>Documents</li>
+                    <li onClick={() => setActiveSection('settings')}>Settings</li>
+                    <li onClick={() => setActiveSection('helpSupport')}>Help & Support</li>
+                    <li onClick={() => setActiveSection('profile')}>Profile</li>
+                    <li onClick={() => setActiveSection('about')}>About</li>
                 </ul>
-            </div>
-            <div className="chat-section">
-                <div className="chatbot-header">Chatbot</div>
-                <div className="chatbot-messages">
-                    {messages.map((msg, index) => (
-                        <div key={index} className={`message ${msg.sender}`}>
-                            <ReactMarkdown>{msg.text}</ReactMarkdown>
-                        </div>
-                    ))}
+                <div className="section-content">
+                    {renderSection()}
                 </div>
-                <div className="chatbot-input">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        placeholder="Type a message..."
-                    />
-                    <button onClick={handleSendMessage}>Send</button>
-                    <label htmlFor="file-upload" className="upload-icon">📎</label>
-                    <input
-                        id="file-upload"
-                        type="file"
-                        className="hidden-input"
-                        onChange={handleFileChange}
-                    />
+            </div>
+            <div className="main-content">
+                <div className="chat-section">
+                    <div className="chatbot-header">Chatbot</div>
+                    <div className="chatbot-messages">
+                        {messages.map((msg, index) => (
+                            <div key={index} className={`message ${msg.sender}`}>
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="chatbot-input">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            placeholder="Type a message..."
+                        />
+                        <button onClick={handleSendMessage}>Send</button>
+                        <label htmlFor="file-upload" className="upload-icon">📎</label>
+                        <input
+                            id="file-upload"
+                            type="file"
+                            className="hidden-input"
+                            onChange={handleFileChange}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
