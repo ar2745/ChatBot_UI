@@ -1,5 +1,6 @@
 # Change to the newly cloned directory
 Write-Host "Changing to the newly cloned directory..."
+$repoDir = "ChatBot_UI"
 Set-Location -Path $repoDir
 
 # Create a virtual environment
