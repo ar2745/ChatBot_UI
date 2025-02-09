@@ -11,4 +11,4 @@ Write-Host "Starting the npm development server..."
 Start-Process powershell -ArgumentList "cd `"$PWD\venv`"; npm start"
 
 # Setup complete
-Write-Host "Setup complete!" -ForegroundColor Green
+Write-Host "Startup complete!" -ForegroundColor Green
