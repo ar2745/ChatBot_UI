@@ -23,6 +23,10 @@ Write-Host "Activating the virtual environment..."
 Write-Host "Navigating to the virtual environment directory..."
 cd .\venv\
 
+# Upgrade pip
+Write-Host "Upgrading pip..."
+python -m pip install --upgrade pip
+
 # Install application dependencies
 Write-Host "Installing application dependencies..."
 pip install -r .\requirements.txt
