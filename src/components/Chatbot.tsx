@@ -242,7 +242,9 @@ const Chatbot: React.FC = () => {
                             placeholder="Type a message..."
                         />
                         <button onClick={handleSendMessage}>Send</button>
-                        <label htmlFor="file-upload" className="upload-icon">📎</label>
+                        <label htmlFor="file-upload" className="upload-icon">
+                            <i className="fas fa-paperclip"></i>
+                        </label>
                         <input
                             id="file-upload"
                             type="file"
