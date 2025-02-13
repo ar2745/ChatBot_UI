@@ -1,3 +1,7 @@
+# Set-Location -Path $repoDir
+$repoDir = "ChatBot_UI"
+Set-Location -Path $repoDir
+
 # Start the chatbot application
 Write-Host "Starting the chatbot application..."
 Start-Process powershell -ArgumentList "cd `"$PWD\venv\src\app`"; python chatbot.py"

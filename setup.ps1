@@ -32,22 +32,6 @@ pip install -r .\requirements.txt
 Write-Host "Installing npm dependencies..."
 npm install
 
-# Start the chatbot application
-Write-host "Starting the chatbot application..."
-cd .\src\app
-python chatbot.py
-
-# Start the Ollama server
-Write-Host "Starting the Ollama server..."
-cd ..
-cd .\ollama
-.\ollama.exe serve
-
-# # Start the npm development server
-Write-Host "Starting the npm development server..."
-cd ..
-npm start
-
 Write-Host "Setup complete!" -ForegroundColor Green
 # Keep the PowerShell window open
 Read-Host -Prompt "Press Enter to exit"
