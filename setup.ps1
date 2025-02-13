@@ -12,7 +12,6 @@ Write-Host "Moving certain files to the virtual environment directory..."
 mv .\src\ .\venv\
 mv .\requirements.txt .\venv\
 mv .\package.json .\venv\
-mv .\package-lock.json .\venv\
 mv .\public\ .\venv\
 mv .\ollama\ .\venv\
 
