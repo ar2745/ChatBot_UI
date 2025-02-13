@@ -54,6 +54,7 @@ langchain-community==0.3.14
 langchain-core==0.3.30
 langchain-text-splitters==0.3.5
 langsmith==0.2.11
+lxml==5.3.0
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 marshmallow==3.25.1
@@ -80,6 +81,7 @@ opentelemetry-util-http==0.50b0
 orjson==3.10.14
 overrides==7.7.0
 packaging==24.2
+pillow==11.1.0
 posthog==3.8.4
 propcache==0.2.1
 protobuf==5.29.3
@@ -94,6 +96,7 @@ PyPika==0.48.9
 pyproject_hooks==1.2.0
 pyreadline3==3.5.4
 python-dateutil==2.9.0.post0
+python-docx==1.1.2
 python-dotenv==1.0.1
 PyYAML==6.0.2
 requests==2.32.3
