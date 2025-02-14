@@ -1,6 +1,5 @@
-# Change to the newly cloned directory
-Write-Host "Changing to the newly cloned directory..."
-$repoDir = "ChatBot_UI"
+# Set-Location -Path $repoDir
+$repoDir = $PSScriptRoot
 Set-Location -Path $repoDir
 
 # Create a virtual environment
@@ -14,6 +13,7 @@ mv .\requirements.txt .\venv\
 mv .\package.json .\venv\
 mv .\public\ .\venv\
 mv .\ollama\ .\venv\
+rm .\setup.ps1
 
 # Activate the virtual environment
 Write-Host "Activating the virtual environment..."
