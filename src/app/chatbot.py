@@ -76,28 +76,48 @@ class Chatbot:
     # Extract text from a PDF file
     def extract_text_from_pdf(self, filepath):
         text = ""                                                                                   # Initialize an empty string to store the text
-        with open(filepath, 'rb') as file:                                                          # Open the PDF file in read-binary mode
-            reader = PyPDF2.PdfReader(file)                                                         # Create a PDF reader object
-            for page_num in range(len(reader.pages)):                                               # Iterate over the pages in the PDF
-                text += reader.pages[page_num].extract_text()                                       # Extract text from the page and append to the text string
-        return text                                                                                 # Return the extracted text
-
+        try:
+            with open(filepath, 'rb') as file:                                                          # Open the PDF file in read-binary mode
+                reader = PyPDF2.PdfReader(file)                                                         # Create a PDF reader object
+                for page_num in range(len(reader.pages)):                                               # Iterate over the pages in the PDF
+                    text += reader.pages[page_num].extract_text()                                       # Extract text from the page and append to the text string
+            return text                                                                                 # Return the extracted text
+        except FileNotFoundError:
+            return "Error file not found"                                                               # Return an error message if the file is not found
+        except Exception as e:
+            return f"Error: {e}"                                                                        # Return the exception message
+        
     # Extract text from a text file
     def extract_text_from_txt(self, filepath):
-        with open(filepath, 'r') as file:                                                           # Open the text file in read mode
-            return file.read()                                                                      # Read the contents of the file and return as a string
+        try:
+            with open(filepath, 'r') as file:                                                           # Open the text file in read mode
+                return file.read()                                                                      # Read the contents of the file and return as a string
+        except FileNotFoundError:
+            return "Error file not found"                                                               # Return an error message if the file is not found
+        except Exception as e:
+            return f"Error: {e}"                                                                        # Return the exception message
 
     # Extract text from a JSON file
     def extract_text_from_json(self, filepath):
-        with open(filepath, 'r') as file:                                                           # Open the JSON file in read mode
-            data = json.load(file)                                                                  # Load the JSON data
-            return json.dumps(data, indent=4)                                                       # Return the JSON data as a formatted string
-
+        try:
+            with open(filepath, 'r') as file:                                                           # Open the JSON file in read mode
+                data = json.load(file)                                                                  # Load the JSON data
+                return json.dumps(data, indent=4)                                                       # Return the JSON data as a formatted string
+        except FileNotFoundError:
+            return "Error file not found"                                                               # Return an error message if the file is not found
+        except Exception as e:
+            return f"Error: {e}"                                                                        # Return the exception message
+        
     # Extract text from a DOCX file
     def extract_text_from_docx(self, filepath):
-        doc = docx.Document(filepath)                                                               # Open the DOCX file
-        return "\n".join([para.text for para in doc.paragraphs])                                    # Extract text from the paragraphs and join them with newline characters
-
+        try:
+            doc = docx.Document(filepath)                                                               # Open the DOCX file
+            return "\n".join([para.text for para in doc.paragraphs])                                    # Extract text from the paragraphs and join them with newline characters
+        except FileNotFoundError:
+            return "Error file not found"                                                               # Return an error message if the file is not found
+        except Exception as e:
+            return f"Error: {e}"                                                                        # Return the exception message
+        
 # Create an instance of the Chatbot class
 chatbot = Chatbot(api_url="http://localhost:11434/api/generate")                                    # Create an instance of the Chatbot class
 

@@ -1,5 +1,5 @@
 # Set-Location -Path $repoDir
-$repoDir = "ChatBot_UI"
+$repoDir = $PSScriptRoot
 Set-Location -Path $repoDir
 
 # Start the chatbot application

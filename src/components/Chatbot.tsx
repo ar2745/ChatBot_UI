@@ -7,7 +7,7 @@ const Chatbot: React.FC = () => {
     const [input, setInput] = useState('');
     const [documents, setDocuments] = useState<string[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-    const [activeSection, setActiveSection] = useState<string>('documents');
+    const [activeSection, setActiveSection] = useState<string>('chatHistory');
     const [chatHistory, setChatHistory] = useState<{ id: number, title: string, messages: { text: string, sender: string }[] }[]>([]);
     const [selectedChat, setSelectedChat] = useState<number | null>(null);
 
@@ -142,6 +142,19 @@ const Chatbot: React.FC = () => {
         }
     };
 
+    const handleNewChat = () => {
+        const newChat = {
+            id: chatHistory.length + 1,
+            title: `Chat Session ${chatHistory.length + 1}`,
+            messages: []
+        };
+        const updatedHistory = [...chatHistory, newChat];
+        setChatHistory(updatedHistory);
+        saveChatHistory(updatedHistory);
+        setSelectedChat(newChat.id);
+        setMessages([]);
+    };
+
     const renderSection = () => {
         switch (activeSection) {
             case 'chatHistory':
@@ -211,6 +224,12 @@ const Chatbot: React.FC = () => {
     return (
         <div className="chatbot-container">
             <div className="sidebar" onClick={handleSidebarClick}>
+                <div className="sidebar-header">
+                    <span className="app-name">JAMAL 1.0</span>
+                    <button className="new-chat-button" onClick={handleNewChat}>
+                        <i className="fas fa-pen"></i>
+                    </button>
+                </div>
                 <ul className="menu">
                     <li onClick={() => setActiveSection('chatHistory')}>Chat History</li>
                     <li onClick={() => setActiveSection('documents')}>Documents</li>
