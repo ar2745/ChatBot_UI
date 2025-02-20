@@ -160,7 +160,7 @@ def chat():                                                                     
         simple_response = chatbot.get_simple_response(formatted_inquiry)                            # Generate a simple response
         return jsonify({'response': simple_response})                                               # Return the simple response
         exit()
-    elif user_input.startswith('@deepseek'):                                                        # Check if the user input starts with '@deepseek'
+    elif data.get('reasoning'):                                                                     # Check if the reasoning flag is set
         try:                                                                                        # Try to process the deepseek request
             simple_response = chatbot.get_simple_response(user_input)                               # Generate a simple response
             deepseek_input = f"Our client is requesting about this: {simple_response}"              # Format the deepseek input
@@ -172,16 +172,36 @@ def chat():                                                                     
             return jsonify({'response': f'Error: {e}'})                                             # Return an error response
     elif document_name:                                                                             # Check if a document name is provided
         if document_name in chatbot.documents:                                                      # Check if the document exists in the documents dictionary
-            doc_content = chatbot.documents[document_name]                                          # Get the content of the document
-            combined_input = f"{user_input}\n\nDocument Content:\n{doc_content}"                    # Combine the user input and document content
-            print(combined_input)
-            response = chatbot.get_simple_response(combined_input)                                  # Generate a simple response
-            return jsonify({'response': response})                                                  # Return the response
+            try:
+                doc_content = chatbot.documents[document_name]                                          # Get the content of the document
+                combined_input = f"{user_input}\n\nDocument Content:\n{doc_content}"                    # Combine the user input and document content
+                print(combined_input)
+                response = chatbot.get_simple_response(combined_input)                                  # Generate a simple response
+                return jsonify({'response': response})                                                  # Return the response
+            except Exception as e:                                                                      # Handle exceptions
+                return jsonify({'response': f'Error: {e}'})                                             # Return an error response
+        else:                                                                                       # If the document does not exist
+            return jsonify({'response': 'Error: Document not found'})                               # Return an error response
+    elif data.get('reasoning') and document_name:
+        if document_name in chatbot.documents:                                                      # Check if the document exists in the documents dictionary
+            try:
+                doc_content = chatbot.documents[document_name]                                          # Get the content of the document
+                combined_input = f"{user_input}\n\nDocument Content:\n{doc_content}"                    # Combine the user input and document content
+                deepseek_input = f"Our client is requesting about this: {combined_input}"                # Format the deepseek input
+                reasoned_response = chatbot.get_reasoned_response(deepseek_input)                       # Generate a reasoned response
+                deepseek_output = f"Here is the relevant reasoned response: {reasoned_response}"        # Format the deepseek output
+                final_response = chatbot.get_simple_response(deepseek_output)                           # Generate a simple response
+                return jsonify({'response': final_response})                                            # Return the final response
+            except Exception as e:                                                                      # Handle exceptions
+                return jsonify({'response': f'Error: {e}'})                                             # Return an error response
         else:                                                                                       # If the document does not exist
             return jsonify({'response': 'Error: Document not found'})                               # Return an error response
     else:                                                                                           # If no special case is detected
-        simple_response = chatbot.get_simple_response(user_input)                                   # Generate a simple response
-        return jsonify({'response': simple_response})                                               # Return the simple response
+        try:
+            simple_response = chatbot.get_simple_response(user_input)                                   # Generate a simple response
+            return jsonify({'response': simple_response})                                               # Return the simple response
+        except Exception as e:                                                                      # Handle exceptions
+            return jsonify({'response': f'Error: {e}'})                                                 # Return an error response
 
 # Run the Flask app
 if __name__ == "__main__":

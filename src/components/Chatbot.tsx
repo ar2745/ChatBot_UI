@@ -10,6 +10,8 @@ const Chatbot: React.FC = () => {
     const [activeSection, setActiveSection] = useState<string>('chatHistory');
     const [chatHistory, setChatHistory] = useState<{ id: number, title: string, messages: { text: string, sender: string }[] }[]>([]);
     const [selectedChat, setSelectedChat] = useState<number | null>(null);
+    const [reasoningMode, setReasoningMode] = useState(false); // New state variable
+    const [editingChatId, setEditingChatId] = useState<number | null>(null); // New state variable for editing chat
 
     useEffect(() => {
         fetch('http://localhost:5000/documents')
@@ -45,7 +47,7 @@ const Chatbot: React.FC = () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: userMessage, document: selectedDocument }),
+                    body: JSON.stringify({ message: userMessage, document: selectedDocument, reasoning: reasoningMode }), // Include reasoning mode
                 });
 
                 const data = await response.json();
@@ -142,6 +144,18 @@ const Chatbot: React.FC = () => {
         }
     };
 
+    const handleRenameChat = (chatId: number, newTitle: string) => {
+        const updatedHistory = chatHistory.map(chat => {
+            if (chat.id === chatId) {
+                return { ...chat, title: newTitle };
+            }
+            return chat;
+        });
+        setChatHistory(updatedHistory);
+        saveChatHistory(updatedHistory);
+        setEditingChatId(null);
+    };
+
     const handleNewChat = () => {
         const newChat = {
             id: chatHistory.length + 1,
@@ -164,8 +178,25 @@ const Chatbot: React.FC = () => {
                         <ul>
                             {chatHistory.map(chat => (
                                 <li key={chat.id}>
-                                    <span onClick={() => handleChatSelect(chat.id)}>{chat.title}</span>
-                                    <button onClick={() => handleDeleteChat(chat.id)}>Delete</button>
+                                    {editingChatId === chat.id ? (
+                                        <input
+                                        type="text"
+                                        defaultValue={chat.title}
+                                        onBlur={(e) => handleRenameChat(chat.id, e.target.value)}
+                                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                          if (e.key === 'Enter') {
+                                            handleRenameChat(chat.id, e.currentTarget.value);
+                                          }
+                                        }}
+                                        autoFocus
+                                        />                                      
+                                    ) : (
+                                        <>
+                                            <span onClick={() => handleChatSelect(chat.id)}>{chat.title}</span>
+                                            <button onClick={() => setEditingChatId(chat.id)}>Rename</button>
+                                            <button onClick={() => handleDeleteChat(chat.id)}>Delete</button>
+                                        </>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -253,6 +284,9 @@ const Chatbot: React.FC = () => {
                         ))}
                     </div>
                     <div className="chatbot-input">
+                        <button className={`reasoning-button ${reasoningMode ? 'active' : ''}`} onClick={() => setReasoningMode(!reasoningMode)}>
+                            <i className="fas fa-lightbulb"></i>
+                        </button>
                         <input
                             type="text"
                             value={input}
