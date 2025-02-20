@@ -115,7 +115,7 @@ body {
 
 .chatbot-header {
   padding: 10px;
-  background-color: #007bff;
+  background-color: #1abc9c;
   color: #fff;
   text-align: center;
   font-size: 1.2em;
@@ -153,7 +153,7 @@ body {
 }
 
 .chatbot-input {
-  width: 97%;
+  width: 98%; /* Make the input section stretch to full width */
   display: flex;
   align-items: center;
   padding: 10px;
@@ -238,14 +238,40 @@ body {
   color: #f39c12;
 }
 
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 89%; /* Make the input container stretch to full width */
+}
+
+.input-container input {
+  flex: 1;
+  padding-right: 5px; /* Adjust padding to make space for the microphone icon */
+}
+
+.voice-input-button {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: #3498db;
+}
+
+.voice-input-button.active {
+  color: #f39c12;
+}
+
 @keyframes fadeIn {
   from {
-      opacity: 0;
-      transform: translateY(10px);
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
-      opacity: 1;
-      transform: translateY(0);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

@@ -12,6 +12,7 @@ const Chatbot: React.FC = () => {
     const [selectedChat, setSelectedChat] = useState<number | null>(null);
     const [reasoningMode, setReasoningMode] = useState(false); // New state variable
     const [editingChatId, setEditingChatId] = useState<number | null>(null); // New state variable for editing chat
+    const [voiceInputMode, setVoiceInputMode] = useState(false); // New state variable for voice input mode
 
     useEffect(() => {
         fetch('http://localhost:5000/documents')
@@ -169,6 +170,27 @@ const Chatbot: React.FC = () => {
         setMessages([]);
     };
 
+    const startVoiceRecognition = () => {
+        const win: any = window;
+        const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setInput(transcript);
+            handleSendMessage();
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error('Speech recognition error:', event.error);
+        };
+
+        recognition.start();
+    };
+
     const renderSection = () => {
         switch (activeSection) {
             case 'chatHistory':
@@ -180,16 +202,16 @@ const Chatbot: React.FC = () => {
                                 <li key={chat.id}>
                                     {editingChatId === chat.id ? (
                                         <input
-                                        type="text"
-                                        defaultValue={chat.title}
-                                        onBlur={(e) => handleRenameChat(chat.id, e.target.value)}
-                                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                          if (e.key === 'Enter') {
-                                            handleRenameChat(chat.id, e.currentTarget.value);
-                                          }
-                                        }}
-                                        autoFocus
-                                        />                                      
+                                            type="text"
+                                            defaultValue={chat.title}
+                                            onBlur={(e) => handleRenameChat(chat.id, e.target.value)}
+                                            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                if (e.key === 'Enter') {
+                                                    handleRenameChat(chat.id, e.currentTarget.value);
+                                                }
+                                            }}
+                                            autoFocus
+                                        />
                                     ) : (
                                         <>
                                             <span onClick={() => handleChatSelect(chat.id)}>{chat.title}</span>
@@ -287,13 +309,23 @@ const Chatbot: React.FC = () => {
                         <button className={`reasoning-button ${reasoningMode ? 'active' : ''}`} onClick={() => setReasoningMode(!reasoningMode)}>
                             <i className="fas fa-lightbulb"></i>
                         </button>
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                            placeholder="Type a message..."
-                        />
+                        <div className="input-container">
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                placeholder="Type a message..."
+                            />
+                            <button className={`voice-input-button ${voiceInputMode ? 'active' : ''}`} onClick={() => {
+                                setVoiceInputMode(!voiceInputMode);
+                                if (!voiceInputMode) {
+                                    startVoiceRecognition();
+                                }
+                            }}>
+                                <i className="fas fa-microphone"></i>
+                            </button>
+                        </div>
                         <button onClick={handleSendMessage}>Send</button>
                         <label htmlFor="file-upload" className="upload-icon">
                             <i className="fas fa-paperclip"></i>
