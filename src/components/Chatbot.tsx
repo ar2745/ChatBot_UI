@@ -2,26 +2,64 @@ import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './Chatbot.css';
 
+// Modal component for link input
+const LinkModal: React.FC<{ show: boolean, onClose: () => void, onSubmit: (link: string) => void }> = ({ show, onClose, onSubmit }) => {
+    const [link, setLink] = useState('');
+
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
+        onSubmit(link);
+        setLink('');
+    };
+
+    if (!show) {
+        return null;
+    }
+
+    return (
+        <div className="modal">
+            <div className="modal-content">
+                <span className="close" onClick={onClose}>&times;</span>
+                <h2>Enter Link</h2>
+                <form onSubmit={handleSubmit}>
+                    <input
+                        type="text"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        placeholder="Enter URL"
+                        required
+                    />
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// Chatbot component
 const Chatbot: React.FC = () => {
     const [messages, setMessages] = useState<{ text: string, sender: string }[]>([]);
     const [input, setInput] = useState('');
+    const [chats, setChats] = useState<string[]>([]);
     const [documents, setDocuments] = useState<string[]>([]);
+    const [links, setLinks] = useState<string[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+    const [selectedLink, setSelectedLink] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState<string>('chatHistory');
     const [chatHistory, setChatHistory] = useState<{ id: number, title: string, messages: { text: string, sender: string }[] }[]>([]);
+    const [linkHistory, setLinkHistory] = useState<string[]>([]);
     const [selectedChat, setSelectedChat] = useState<number | null>(null);
-    const [reasoningMode, setReasoningMode] = useState(false); // New state variable
-    const [editingChatId, setEditingChatId] = useState<number | null>(null); // New state variable for editing chat
-    const [voiceInputMode, setVoiceInputMode] = useState(false); // New state variable for voice input mode
+    const [reasoningMode, setReasoningMode] = useState(false);
+    const [editingChatId, setEditingChatId] = useState<number | null>(null);
+    const [voiceInputMode, setVoiceInputMode] = useState(false);
+    const [voiceTimeout, setVoiceTimeout] = useState<NodeJS.Timeout | null>(null);
+    const [linkInput, setLinkInput] = useState(''); // New state for link input
+    const [showLinkModal, setShowLinkModal] = useState(false); // State to control the modal visibility
 
     useEffect(() => {
-        fetch('http://localhost:5000/documents')
-            .then(response => response.json())
-            .then(data => setDocuments(data.documents))
-            .catch(error => console.error('Error fetching documents:', error));
-        
-        // Fetch chat history from local storage
         fetchChatHistory();
+        fetchDocumentHistory();
+        fetchLinkHistory();
     }, []);
 
     const fetchChatHistory = () => {
@@ -33,98 +71,6 @@ const Chatbot: React.FC = () => {
 
     const saveChatHistory = (history: { id: number, title: string, messages: { text: string, sender: string }[] }[]) => {
         localStorage.setItem('chatHistory', JSON.stringify(history));
-    };
-
-    const handleSendMessage = async () => {
-        if (input.trim()) {
-            const newMessage = { text: input, sender: 'user' };
-            setMessages([...messages, newMessage]);
-            const userMessage = input;
-            setInput('');
-
-            try {
-                const response = await fetch('http://localhost:5000/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: userMessage, document: selectedDocument, reasoning: reasoningMode }), // Include reasoning mode
-                });
-
-                const data = await response.json();
-                const botMessage = { text: data.response, sender: 'bot' };
-                setMessages(prevMessages => [...prevMessages, botMessage]);
-
-                // Update chat history
-                if (selectedChat !== null) {
-                    const updatedHistory = chatHistory.map(chat => {
-                        if (chat.id === selectedChat) {
-                            return { ...chat, messages: [...chat.messages, newMessage, botMessage] };
-                        }
-                        return chat;
-                    });
-                    setChatHistory(updatedHistory);
-                    saveChatHistory(updatedHistory);
-                } else {
-                    const newChat = {
-                        id: chatHistory.length + 1,
-                        title: `Chat Session ${chatHistory.length + 1}`,
-                        messages: [newMessage, botMessage]
-                    };
-                    const updatedHistory = [...chatHistory, newChat];
-                    setChatHistory(updatedHistory);
-                    saveChatHistory(updatedHistory);
-                    setSelectedChat(newChat.id);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    { text: 'Error: Unable to get response from the server.', sender: 'bot' }
-                ]);
-            }
-        }
-    };
-
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('http://localhost:5000/upload', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                const data = await response.json();
-                if (data.error) {
-                    setMessages(prevMessages => [
-                        ...prevMessages,
-                        { text: `Error: ${data.error}`, sender: 'bot' }
-                    ]);
-                } else {
-                    setMessages(prevMessages => [
-                        ...prevMessages,
-                        { text: `File uploaded successfully: ${data.filename}`, sender: 'bot' }
-                    ]);
-                    setDocuments(prevDocuments => [...prevDocuments, data.filename]);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    { text: 'Error: Unable to upload file.', sender: 'bot' }
-                ]);
-            }
-        }
-    };
-
-    const handleSidebarClick = (event: React.MouseEvent<HTMLDivElement>) => {
-        if (event.target === event.currentTarget) {
-            setSelectedDocument(null);
-        }
     };
 
     const handleChatSelect = (chatId: number) => {
@@ -170,6 +116,159 @@ const Chatbot: React.FC = () => {
         setMessages([]);
     };
 
+    const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:5000/document_upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    setMessages(prevMessages => [
+                        ...prevMessages,
+                        { text: `Error: ${data.error}`, sender: 'bot' }
+                    ]);
+                } else {
+                    setMessages(prevMessages => [
+                        ...prevMessages,
+                        { text: `File uploaded successfully: ${data.filename}`, sender: 'bot' }
+                    ]);
+                    setDocuments(prevDocuments => [...prevDocuments, data.filename]);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: 'Error: Unable to upload file.', sender: 'bot' }
+                ]);
+            }
+        }
+    };
+
+    const fetchDocumentHistory = () => {
+        fetch('http://localhost:5000/documents')
+            .then(response => response.json())
+            .then(data => setDocuments(data.documents))
+            .catch(error => console.error('Error fetching documents:', error));
+    };
+
+    const saveDocumentHistory = (history: string[]) => {
+        localStorage.setItem('documentHistory', JSON.stringify(history));
+    }
+
+    const handleDocumentSelect = (document: string) => {
+        setSelectedDocument(document);
+    }   
+
+    const handleDocumentDelete = async (document: string) => {
+        try {
+            const response = await fetch('http://localhost:5000/document_delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: document }),
+            });
+    
+            const data = await response.json();
+            if (data.error) {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `Error: ${data.error}`, sender: 'bot' }
+                ]);
+            } else {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `File deleted successfully: ${document}`, sender: 'bot' }
+                ]);
+                setDocuments(prevDocuments => prevDocuments.filter(doc => doc !== document));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            setMessages(prevMessages => [
+                ...prevMessages,
+                { text: 'Error: Unable to delete file.', sender: 'bot' }
+            ]);
+        }
+    };
+
+    const fetchLinkHistory = () => {
+        fetch('http://localhost:5000/links')
+            .then(response => response.json())
+            .then(data => setLinks(data.links))
+            .catch(error => console.error('Error fetching links:', error));
+    };
+
+    const handleLinkUpload = async (link: string) => {
+        try {
+            const response = await fetch('http://localhost:5000/link_upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ urls: link }),
+            });
+
+            const data = await response.json();
+            if (data.response) {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `Link uploaded successfully: ${link}`, sender: 'bot' }
+                ]);
+                setLinks(prevLinks => [...prevLinks, link]);
+            } else {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `Error: ${data.response}`, sender: 'bot' }
+                ]);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            setMessages(prevMessages => [
+                ...prevMessages,
+                { text: 'Error: Unable to upload link.', sender: 'bot' }
+            ]);
+        }
+    };
+
+    const handleLinkDelete = async (link: string) => {
+        try {
+            const response = await fetch('http://localhost:5000/link_delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: link }), // Ensure the key matches what the server expects
+            });
+    
+            const data = await response.json();
+            if (data.response) {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `Link deleted successfully: ${link}`, sender: 'bot' }
+                ]);
+                setLinks(prevLinks => prevLinks.filter(l => l !== link));
+            } else {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: `Error: ${data.response}`, sender: 'bot' }
+                ]);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            setMessages(prevMessages => [
+                ...prevMessages,
+                { text: 'Error: Unable to delete link.', sender: 'bot' }
+            ]);
+        }
+    };
+
     const startVoiceRecognition = () => {
         const win: any = window;
         const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -178,17 +277,92 @@ const Chatbot: React.FC = () => {
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
+        let timeout: NodeJS.Timeout | null = null;
+
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             setInput(transcript);
-            handleSendMessage();
+
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+
+            timeout = setTimeout(() => {
+                handleSendMessage();
+            }, 4000);
         };
 
         recognition.onerror = (event: any) => {
             console.error('Speech recognition error:', event.error);
+            if (event.error === 'network') {
+                alert('Network error occurred during speech recognition. Please check your internet connection or use a different browser.');
+            }
+        };
+
+        recognition.onend = () => {
+            if (voiceInputMode) {
+                recognition.start();
+            }
         };
 
         recognition.start();
+    };
+
+    const handleSidebarClick = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (event.target === event.currentTarget) {
+            setSelectedDocument(null);
+            setSelectedLink(null);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (input.trim()) {
+            const newMessage = { text: input, sender: 'user' };
+            setMessages([...messages, newMessage]);
+            const userMessage = input;
+            setInput('');
+
+            try {
+                const response = await fetch('http://localhost:5000/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: userMessage, document: selectedDocument, link: selectedLink, reasoning: reasoningMode }),
+                });
+
+                const data = await response.json();
+                const botMessage = { text: data.response, sender: 'bot' };
+                setMessages(prevMessages => [...prevMessages, botMessage]);
+
+                if (selectedChat !== null) {
+                    const updatedHistory = chatHistory.map(chat => {
+                        if (chat.id === selectedChat) {
+                            return { ...chat, messages: [...chat.messages, newMessage, botMessage] };
+                        }
+                        return chat;
+                    });
+                    setChatHistory(updatedHistory);
+                    saveChatHistory(updatedHistory);
+                } else {
+                    const newChat = {
+                        id: chatHistory.length + 1,
+                        title: `Chat Session ${chatHistory.length + 1}`,
+                        messages: [newMessage, botMessage]
+                    };
+                    const updatedHistory = [...chatHistory, newChat];
+                    setChatHistory(updatedHistory);
+                    saveChatHistory(updatedHistory);
+                    setSelectedChat(newChat.id);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: 'Error: Unable to get response from the server.', sender: 'bot' }
+                ]);
+            }
+        }
     };
 
     const renderSection = () => {
@@ -233,9 +407,28 @@ const Chatbot: React.FC = () => {
                                 <li
                                     key={index}
                                     className={selectedDocument === doc ? 'selected' : ''}
-                                    onClick={() => setSelectedDocument(doc)}
+                                    onClick={() => handleDocumentSelect(doc)}
                                 >
                                     {doc}
+                                    <button onClick={() => handleDocumentDelete(doc)}>Delete</button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                );
+            case 'links':
+                return (
+                    <div>
+                        <h3>Links</h3>
+                        <ul>
+                            {links.map((link, index) => (
+                                <li
+                                    key={index}
+                                    className={selectedLink === link ? 'selected' : ''}
+                                    onClick={() => setSelectedLink(link)}
+                                >
+                                    {link}
+                                    <button onClick={() => handleLinkDelete(link)}>Delete</button>
                                 </li>
                             ))}
                         </ul>
@@ -286,6 +479,7 @@ const Chatbot: React.FC = () => {
                 <ul className="menu">
                     <li onClick={() => setActiveSection('chatHistory')}>Chat History</li>
                     <li onClick={() => setActiveSection('documents')}>Documents</li>
+                    <li onClick={() => setActiveSection('links')}>Links</li>
                     <li onClick={() => setActiveSection('settings')}>Settings</li>
                     <li onClick={() => setActiveSection('helpSupport')}>Help & Support</li>
                     <li onClick={() => setActiveSection('profile')}>Profile</li>
@@ -308,6 +502,9 @@ const Chatbot: React.FC = () => {
                     <div className="chatbot-input">
                         <button className={`reasoning-button ${reasoningMode ? 'active' : ''}`} onClick={() => setReasoningMode(!reasoningMode)}>
                             <i className="fas fa-lightbulb"></i>
+                        </button>
+                        <button className="link-button" onClick={() => setShowLinkModal(true)}>
+                            <i className="fas fa-link"></i>
                         </button>
                         <div className="input-container">
                             <input
@@ -334,11 +531,12 @@ const Chatbot: React.FC = () => {
                             id="file-upload"
                             type="file"
                             className="hidden-input"
-                            onChange={handleFileChange}
+                            onChange={handleDocumentUpload}
                         />
                     </div>
                 </div>
             </div>
+            <LinkModal show={showLinkModal} onClose={() => setShowLinkModal(false)} onSubmit={handleLinkUpload} />
         </div>
     );
 };

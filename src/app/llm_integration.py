@@ -1,4 +1,7 @@
 import requests
+import time
+import asyncio
+from crawl4ai import *
 
 '''
 This class provides integration with the LLM API for generating responses to user prompts.
@@ -25,13 +28,14 @@ class LLMIntegration:
     def __init__(self, api_url="http://localhost:11434/api/generate"):          # Initialize the LLMIntegration class with the API URL
         self.api_url = api_url                                                  # Set the API URL
 
-    def generate_reasoned_response(self, prompt):                               # Generate a reasoned response using the deepseek-r1 model
+    # Generate a simple response using the llama3.2 model
+    def generate_simple_response(self, prompt):
         # Set the request headers and data
         headers = {
             "Content-Type": "application/json"                                  # Set the content type to JSON
         }
         data = {
-            "model": "deepseek-r1:1.5b",                                        # Set the model to deepseek-r1:1.5b
+            "model": "llama3.2:1B",                                             # Set the model to llama3.2:1B
             "prompt": prompt,                                                   # Set the prompt to the user input
             "stream": False                                                     # Set the stream flag to False
         }
@@ -44,15 +48,14 @@ class LLMIntegration:
                 return "Error: Unable to generate response"                     # Return an error message
         except requests.exceptions.RequestException as e:                       # Handle request exceptions
             return f"Error: {e}"                                                # Return an error message with the exception
-    
-    # Generate a simple response using the llama3.2 model
-    def generate_simple_response(self, prompt):
+        
+    def generate_reasoned_response(self, prompt):                               # Generate a reasoned response using the deepseek-r1 model
         # Set the request headers and data
         headers = {
             "Content-Type": "application/json"                                  # Set the content type to JSON
         }
         data = {
-            "model": "llama3.2:1B",                                             # Set the model to llama3.2:1B
+            "model": "deepseek-r1:1.5b",                                        # Set the model to deepseek-r1:1.5b
             "prompt": prompt,                                                   # Set the prompt to the user input
             "stream": False                                                     # Set the stream flag to False
         }
