@@ -1,3 +1,4 @@
+import isEqual from 'lodash.isequal';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './Chatbot.css';
@@ -60,7 +61,19 @@ const Chatbot: React.FC = () => {
         fetchChatHistory();
         fetchDocumentHistory();
         fetchLinkHistory();
-    }, []);
+    
+        // Set up periodic memory storage
+        const intervalId = setInterval(() => {
+            const lastUserMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
+            const lastBotMessage = messages.length > 1 ? messages[messages.length - 2] : undefined;
+            if (selectedChat !== null) {
+                storeMemory(lastBotMessage, lastUserMessage, selectedDocument, selectedLink, selectedChat);
+            }
+        }, 10000); // Store memory every 60 seconds
+    
+        // Clean up the interval on component unmount
+        return () => clearInterval(intervalId);
+    }, [messages, selectedDocument, selectedLink, selectedChat]);
 
     const fetchChatHistory = () => {
         const history = localStorage.getItem('chatHistory');
@@ -116,41 +129,6 @@ const Chatbot: React.FC = () => {
         setMessages([]);
     };
 
-    const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('http://localhost:5000/document_upload', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                const data = await response.json();
-                if (data.error) {
-                    setMessages(prevMessages => [
-                        ...prevMessages,
-                        { text: `Error: ${data.error}`, sender: 'bot' }
-                    ]);
-                } else {
-                    setMessages(prevMessages => [
-                        ...prevMessages,
-                        { text: `File uploaded successfully: ${data.filename}`, sender: 'bot' }
-                    ]);
-                    setDocuments(prevDocuments => [...prevDocuments, data.filename]);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    { text: 'Error: Unable to upload file.', sender: 'bot' }
-                ]);
-            }
-        }
-    };
-
     const fetchDocumentHistory = () => {
         fetch('http://localhost:5000/documents')
             .then(response => response.json())
@@ -158,13 +136,50 @@ const Chatbot: React.FC = () => {
             .catch(error => console.error('Error fetching documents:', error));
     };
 
-    const saveDocumentHistory = (history: string[]) => {
-        localStorage.setItem('documentHistory', JSON.stringify(history));
-    }
-
     const handleDocumentSelect = (document: string) => {
         setSelectedDocument(document);
-    }   
+    };
+
+    const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+    
+            try {
+                console.log('Uploading file:', file.name); // Add this line for logging
+                const response = await fetch('http://localhost:5000/document_upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+    
+                const responseText = await response.text(); // Get the full response text
+                console.log('Server response:', responseText); // Log the full response text
+    
+                const data = JSON.parse(responseText); // Parse the response text as JSON
+                if (data.error) {
+                    console.error('Error from server:', data.error); // Add this line for logging
+                    setMessages(prevMessages => [
+                        ...prevMessages,
+                        { text: `Error: ${data.error}`, sender: 'bot' }
+                    ]);
+                } else {
+                    console.log('File uploaded successfully:', data.filename); // Add this line for logging
+                    setMessages(prevMessages => [
+                        ...prevMessages,
+                        { text: `File uploaded successfully: ${data.filename}`, sender: 'bot' }
+                    ]);
+                    setDocuments(prevDocuments => [...prevDocuments, data.filename]);
+                }
+            } catch (error) {
+                console.error('Error during file upload:', error); // Add this line for logging
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { text: 'Error: Unable to upload file.', sender: 'bot' }
+                ]);
+            }
+        }
+    };   
 
     const handleDocumentDelete = async (document: string) => {
         try {
@@ -315,26 +330,116 @@ const Chatbot: React.FC = () => {
         }
     };
 
+    const storeMemory = async (userMessage?: { text: string, sender: string }, botMessage?: { text: string, sender: string }, document?: string | null, link?: string | null, conversationId?: number) => {
+        const memoryData = {
+            userMessage,
+            botMessage,
+            documents: document ? [document] : [],
+            links: link ? [link] : [],
+            conversationId
+        };
+    
+        console.log('Storing memory data:', memoryData); // Add this line
+    
+        // Retrieve the last stored memory for comparison
+        const lastStoredMemory = await retrieveLastStoredMemory(conversationId);
+    
+        // Check if the current memory is the same as the last stored memory
+        if (lastStoredMemory && isMemoryEqual(memoryData, lastStoredMemory)) {
+            console.log('Memory is the same as the last stored memory. Skipping storage.');
+            return;
+        }
+    
+        try {
+            const response = await fetch('http://localhost:5000/store_memory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(memoryData),
+            });
+    
+            if (response.ok) {
+                console.log('Memory stored successfully');
+            } else {
+                const errorData = await response.json();
+                console.error('Error storing memory:', errorData.error);
+            }
+        } catch (error) {
+            console.error('Error storing memory:', error);
+        }
+    };
+
+    const retrieveMemory = async (query: string, conversationId?: number) => {
+        try {
+            const response = await fetch('http://localhost:5000/retrieve_memory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query, conversationId }),
+            });
+    
+            const data = await response.json();
+            if (data.memories) {
+                return data.memories;
+            } else {
+                console.error('Error retrieving memories:', data.error);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error retrieving memories:', error);
+            return [];
+        }
+    };
+
+    const retrieveLastStoredMemory = async (conversationId?: number) => {
+        try {
+            const response = await fetch('http://localhost:5000/retrieve_last_memory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ conversationId }),
+            });
+    
+            const data = await response.json();
+            return data.memory;
+        } catch (error) {
+            console.error('Error retrieving last stored memory:', error);
+            return null;
+        }
+    };
+
+    const isMemoryEqual = (memory1: any, memory2: any) => {
+        return isEqual(memory1, memory2);
+    };
+
     const handleSendMessage = async () => {
         if (input.trim()) {
             const newMessage = { text: input, sender: 'user' };
             setMessages([...messages, newMessage]);
             const userMessage = input;
             setInput('');
-
+    
             try {
+                // Retrieve relevant past interactions
+                const retrievedMemories = await retrieveMemory(userMessage, selectedChat ?? undefined);
+                console.log('Retrieved memories:', retrievedMemories);
+    
+                // Use retrieved memories to provide context for the new message
                 const response = await fetch('http://localhost:5000/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: userMessage, document: selectedDocument, link: selectedLink, reasoning: reasoningMode }),
+                    body: JSON.stringify({ message: userMessage, document: selectedDocument, link: selectedLink, reasoning: reasoningMode, memories: retrievedMemories, conversationId: selectedChat }),
                 });
-
+    
                 const data = await response.json();
                 const botMessage = { text: data.response, sender: 'bot' };
                 setMessages(prevMessages => [...prevMessages, botMessage]);
-
+    
                 if (selectedChat !== null) {
                     const updatedHistory = chatHistory.map(chat => {
                         if (chat.id === selectedChat) {
@@ -355,6 +460,10 @@ const Chatbot: React.FC = () => {
                     saveChatHistory(updatedHistory);
                     setSelectedChat(newChat.id);
                 }
+    
+                // Store the new message in memory
+                storeMemory(newMessage, botMessage, selectedDocument, selectedLink, selectedChat ?? undefined);
+    
             } catch (error) {
                 console.error('Error:', error);
                 setMessages(prevMessages => [
