@@ -10,6 +10,8 @@ import asyncio
 from crawl4ai import AsyncWebCrawler
 import chromadb
 from sentence_transformers import SentenceTransformer
+from datetime import datetime
+import json
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
@@ -219,8 +221,6 @@ def delete_link():
     except Exception as e:
         return jsonify({"response": f"Error: {e}"}), 500
 
-from datetime import datetime
-
 @app.route('/store_memory', methods=['POST'])
 def store_memory():
     data = request.get_json()
@@ -234,27 +234,30 @@ def store_memory():
         return jsonify({"error": "No message provided"}), 400
 
     # Create a unified metadata structure with a timestamp
-    metadata = json.dumps({
+    metadata = {
         "userMessage": user_message,
         "botMessage": bot_message,
         "documents": documents,
         "links": links,
-        "timestamp": datetime.utcnow().isoformat()
-    })
+        "timestamp": datetime.utcnow().isoformat(),
+        "conversationId": conversation_id
+    }
+
+    metadata_json = json.dumps(metadata)
 
     embeddings = []
     if user_message:
         user_embedding = sentence_model.encode(user_message['text']).tolist()
         embeddings.append({"text": user_message['text'], 
                            "embedding": user_embedding, 
-                           "metadata": metadata,
+                           "metadata": metadata_json,
                            "conversation_id": conversation_id})
    
     if bot_message:
         bot_embedding = sentence_model.encode(bot_message['text']).tolist()
         embeddings.append({"text": bot_message['text'], 
                            "embedding": bot_embedding, 
-                           "metadata": metadata,
+                           "metadata": metadata_json,
                            "conversation_id": conversation_id})
     
     if documents:
@@ -262,7 +265,7 @@ def store_memory():
             doc_embedding = sentence_model.encode(doc).tolist()
             embeddings.append({"text": doc, 
                                "embedding": doc_embedding, 
-                               "metadata": metadata,
+                               "metadata": metadata_json,
                                "conversation_id": conversation_id})
     
     if links:
@@ -270,7 +273,7 @@ def store_memory():
             link_embedding = sentence_model.encode(link).tolist()
             embeddings.append({"text": link, 
                                "embedding": link_embedding, 
-                               "metadata": metadata,
+                               "metadata": metadata_json,
                                "conversation_id": conversation_id})
 
     for embedding in embeddings:
@@ -281,58 +284,10 @@ def store_memory():
             ids=[embedding["text"]]
         )
 
-    return jsonify({"message": "Memory stored successfully", "embedding": embeddings}), 200
-
+    return jsonify({"message": "Memory stored successfully", "metadata": metadata}), 200
+    
 @app.route('/retrieve_memory', methods=['POST'])
 def retrieve_memory():
-    data = request.get_json()
-    query = data.get('query')
-    conversation_id = data.get('conversationId')
-
-    if not query:
-        return jsonify({"error": "No query provided"}), 400
-
-    query_embedding = sentence_model.encode(query).tolist()
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=10
-    )
-
-    memories = []
-    documents = results.get("documents", [])
-    metadatas = results.get("metadatas", [])
-
-    for metadata_item, doc in zip(metadatas, documents):
-        metadata = metadata_item
-
-        # If metadata_item is a list, take its first element
-        if isinstance(metadata_item, list):
-            metadata = metadata_item[0] if metadata_item else {}
-        
-        # If metadata is a string, parse it as JSON
-        if isinstance(metadata, str):
-            try:
-                metadata = json.loads(metadata)
-            except Exception:
-                metadata = {}
-        
-        if metadata.get("conversation_id") == conversation_id:
-            memories.append({
-                "text": doc,
-                "metadata": metadata
-            })
-
-    # Filter and format the memories to include only relevant messages
-    filtered_memories = []
-    for memory in memories:
-        if isinstance(memory['metadata'], dict):
-            filtered_memories.append(memory['metadata'])
-
-    return jsonify({"memories": filtered_memories}), 200
-
-@app.route('/retrieve_last_memory', methods=['POST'])
-def retrieve_last_memory():
     data = request.get_json()
     conversation_id = data.get('conversationId')
 
@@ -341,41 +296,66 @@ def retrieve_last_memory():
 
     results = collection.query(
         query_texts=[""],
-        n_results=10,  # Retrieve a reasonable number of results
+        n_results=100,
         where={"conversation_id": conversation_id}
     )
 
+    memories = []
     documents = results.get("documents", [])
     metadatas = results.get("metadatas", [])
 
-    latest_memory = None
-    latest_timestamp = datetime.min
     for metadata_item, doc in zip(metadatas, documents):
-        # Ensure you extract the metadata properly (if it's a list, take the first element)
         metadata = metadata_item[0] if isinstance(metadata_item, list) else metadata_item
+
         try:
             metadata_json = json.loads(metadata.get("metadata", "{}"))
         except Exception:
             metadata_json = {}
+
+        memories.append(metadata_json)
+
+    return jsonify({"memories": memories}), 200
+
+@app.route('/retrieve_latest_memory', methods=['POST'])
+def retrieve_latest_memory():
+    data = request.get_json()
+    conversation_id = data.get('conversationId')
+
+    if not conversation_id:
+        return jsonify({"error": "No conversation ID provided"}), 400
+
+    results = collection.query(
+        query_texts=[""],
+        n_results=100,
+        where={"conversation_id": conversation_id}
+    )
+
+    memories = []
+    documents = results.get("documents", [])
+    metadatas = results.get("metadatas", [])
+
+    for metadata_item, doc in zip(metadatas, documents):
+        metadata = metadata_item[0] if isinstance(metadata_item, list) else metadata_item
+
+        try:
+            metadata_json = json.loads(metadata.get("metadata", "{}"))
+        except Exception:
+            metadata_json = {}
+        
         timestamp_str = metadata_json.get("timestamp", "")
         try:
-            timestamp = datetime.fromisoformat(timestamp_str)
+            timestamp = datetime.fromisoformat(timestamp_str).replace(tzinfo=None)
         except ValueError:
-            timestamp = datetime.min
-        if timestamp > latest_timestamp:
-            latest_timestamp = timestamp
-            latest_memory = {
-                "userMessage": metadata_json.get("userMessage"),
-                "botMessage": metadata_json.get("botMessage"),
-                "documents": metadata_json.get("documents", []),
-                "links": metadata_json.get("links", []),
-                "conversationId": conversation_id
-            }
+            timestamp = datetime.min.replace(tzinfo=None)
+        metadata_json["timestamp"] = timestamp
 
-    if latest_memory:
-        return jsonify({"memory": latest_memory}), 200
-    else:
-        return jsonify({"memory": None}), 200
+        memories.append(metadata_json)
+
+    memories = sorted(memories, key=lambda x: x.get("timestamp", datetime.min), reverse=True)
+
+    recent_memories = memories[:5]
+
+    return jsonify({"memories": recent_memories}), 200
 
 @app.route('/chat', methods=['POST'])
 def chat():

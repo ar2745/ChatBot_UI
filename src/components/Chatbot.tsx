@@ -69,7 +69,7 @@ const Chatbot: React.FC = () => {
             if (selectedChat !== null) {
                 storeMemory(lastBotMessage, lastUserMessage, selectedDocument, selectedLink, selectedChat);
             }
-        }, 10000); // Store memory every 60 seconds
+        }, 60000); // Store memory every 60 seconds
     
         // Clean up the interval on component unmount
         return () => clearInterval(intervalId);
@@ -336,10 +336,9 @@ const Chatbot: React.FC = () => {
             botMessage,
             documents: document ? [document] : [],
             links: link ? [link] : [],
-            conversationId
+            conversationId,
+            timestamp: new Date().toISOString(),
         };
-    
-        console.log('Storing memory data:', memoryData); // Add this line
     
         // Retrieve the last stored memory for comparison
         const lastStoredMemory = await retrieveLastStoredMemory(conversationId);
@@ -358,9 +357,10 @@ const Chatbot: React.FC = () => {
                 },
                 body: JSON.stringify(memoryData),
             });
-    
+            
+            const data = await response.json();
             if (response.ok) {
-                console.log('Memory stored successfully');
+                console.log('Memory stored successfully', data.metadata);
             } else {
                 const errorData = await response.json();
                 console.error('Error storing memory:', errorData.error);
@@ -382,8 +382,10 @@ const Chatbot: React.FC = () => {
     
             const data = await response.json();
             if (data.memories) {
+                console.log('Retrieved overall memories:', data.memories);
                 return data.memories;
-            } else {
+            } 
+            else {
                 console.error('Error retrieving memories:', data.error);
                 return [];
             }
@@ -395,7 +397,7 @@ const Chatbot: React.FC = () => {
 
     const retrieveLastStoredMemory = async (conversationId?: number) => {
         try {
-            const response = await fetch('http://localhost:5000/retrieve_last_memory', {
+            const response = await fetch('http://localhost:5000/retrieve_latest_memory', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -404,6 +406,7 @@ const Chatbot: React.FC = () => {
             });
     
             const data = await response.json();
+            console.log('Retrieved latest stored memory:', data.memories);
             return data.memory;
         } catch (error) {
             console.error('Error retrieving last stored memory:', error);
@@ -425,7 +428,6 @@ const Chatbot: React.FC = () => {
             try {
                 // Retrieve relevant past interactions
                 const retrievedMemories = await retrieveMemory(userMessage, selectedChat ?? undefined);
-                console.log('Retrieved memories:', retrievedMemories);
     
                 // Use retrieved memories to provide context for the new message
                 const response = await fetch('http://localhost:5000/chat', {
