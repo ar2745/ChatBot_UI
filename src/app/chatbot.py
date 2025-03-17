@@ -149,7 +149,7 @@ def upload_file():
             return jsonify({"error": "No selected file"}), 400
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOADS_FOLDER'], filename)
+            filepath = os.path.join(app.config['DOCUMENTS_FOLDER'], filename)
             file.save(filepath)
             # Check if chatbot object is available and functioning
             try:

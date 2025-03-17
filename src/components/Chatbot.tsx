@@ -63,17 +63,41 @@ const Chatbot: React.FC = () => {
         fetchLinkHistory();
     
         // Set up periodic memory storage
-        const intervalId = setInterval(() => {
-            const lastUserMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
-            const lastBotMessage = messages.length > 1 ? messages[messages.length - 2] : undefined;
+        const intervalId = setInterval(async () => {
             if (selectedChat !== null) {
-                storeMemory(lastBotMessage, lastUserMessage, selectedDocument, selectedLink, selectedChat);
+                const memory1 = await retrieveMemory('', selectedChat);
+                const lastUserMessage = memory1[0]?.userMessage.text;
+                const lastBotMessage = memory1[0]?.botMessage.text;
+            
+                if (memory1) {
+                    console.log('Retrieved memories:', memory1);
+                    console.log('Conducting similarity analysis...');
+                    if (memory1[0]?.userMessage.text === lastUserMessage && memory1[0]?.botMessage.text === lastBotMessage) {
+                        console.log('User and bot messages are the same as the last stored user and bot messages');
+                    }
+                    else {
+                        console.log('User and bot messages are different from the last stored user and bot messages');
+                        console.log('User message is different from the last stored user message', lastUserMessage);
+                        console.log('Bot message is different from the last stored bot message', lastBotMessage);
+                        console.log('Storing new memory...');
+                        //storeMemory(lastBotMessage, lastUserMessage, selectedDocument, selectedLink, selectedChat);
+                    }
+                }
             }
         }, 60000); // Store memory every 60 seconds
     
         // Clean up the interval on component unmount
         return () => clearInterval(intervalId);
     }, [messages, selectedDocument, selectedLink, selectedChat]);
+
+    const fetchHome = () => {
+        return (
+            <div className="home-container">
+                <h1>Welcome to Chatbot UI</h1>
+                <p>This is the home page of the Chatbot application. Use the sidebar to navigate through different sections.</p>
+            </div>
+        )
+    }
 
     const fetchChatHistory = () => {
         const history = localStorage.getItem('chatHistory');
@@ -478,6 +502,8 @@ const Chatbot: React.FC = () => {
 
     const renderSection = () => {
         switch (activeSection) {
+            case 'home':
+                return fetchHome();
             case 'chatHistory':
                 return (
                     <div>
@@ -579,28 +605,33 @@ const Chatbot: React.FC = () => {
     };
 
     return (
-        <div className="chatbot-container">
-            <div className="sidebar" onClick={handleSidebarClick}>
-                <div className="sidebar-header">
-                    <span className="app-name">JAMAL 1.0</span>
-                    <button className="new-chat-button" onClick={handleNewChat}>
-                        <i className="fas fa-pen"></i>
-                    </button>
-                </div>
-                <ul className="menu">
-                    <li onClick={() => setActiveSection('chatHistory')}>Chat History</li>
-                    <li onClick={() => setActiveSection('documents')}>Documents</li>
-                    <li onClick={() => setActiveSection('links')}>Links</li>
-                    <li onClick={() => setActiveSection('settings')}>Settings</li>
-                    <li onClick={() => setActiveSection('helpSupport')}>Help & Support</li>
-                    <li onClick={() => setActiveSection('profile')}>Profile</li>
-                    <li onClick={() => setActiveSection('about')}>About</li>
-                </ul>
-                <div className="section-content">
-                    {renderSection()}
-                </div>
+    <div className="chatbot-container">
+        <div className="sidebar" onClick={handleSidebarClick}>
+            <div className="sidebar-header">
+                <button className="home-button" onClick={() => setActiveSection('home')}>
+                    <i className="fas fa-home"></i>
+                </button>
+                <button className="new-chat-button" onClick={handleNewChat}>
+                    <i className="fas fa-pen"></i>
+                </button>
             </div>
-            <div className="main-content">
+            <ul className="menu">
+                <li onClick={() => setActiveSection('chatHistory')}>Chat History</li>
+                <li onClick={() => setActiveSection('documents')}>Documents</li>
+                <li onClick={() => setActiveSection('links')}>Links</li>
+                <li onClick={() => setActiveSection('settings')}>Settings</li>
+                <li onClick={() => setActiveSection('helpSupport')}>Help & Support</li>
+                <li onClick={() => setActiveSection('profile')}>Profile</li>
+                <li onClick={() => setActiveSection('about')}>About</li>
+            </ul>
+            <div className="section-content">
+                {renderSection()}
+            </div>
+        </div>
+        <div className="main-content">
+            {activeSection === 'home' ? (
+                fetchHome()
+            ) : (
                 <div className="chat-section">
                     <div className="chatbot-header">Chatbot</div>
                     <div className="chatbot-messages">
@@ -646,10 +677,11 @@ const Chatbot: React.FC = () => {
                         />
                     </div>
                 </div>
-            </div>
-            <LinkModal show={showLinkModal} onClose={() => setShowLinkModal(false)} onSubmit={handleLinkUpload} />
+            )}
         </div>
-    );
-};
+        <LinkModal show={showLinkModal} onClose={() => setShowLinkModal(false)} onSubmit={handleLinkUpload} />
+    </div>
+);
+}
 
 export default Chatbot;
